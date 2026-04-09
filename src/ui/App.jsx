@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { can } from '../core/auth.js';
-import storage from '../core/storage.js';
+import storage from '../core/storage.browser.js';
 import seedData from '../data/pilot-seed.js';
 
 import DashboardRouter from './dashboards/DashboardRouter.jsx';

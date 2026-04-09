@@ -5,16 +5,10 @@
  * Server mode: JWT + bcrypt, role-based access control
  *
  * Permission matrix mirrors master.schema.json ROLES definition.
+ * env.js is intentionally NOT imported here — auth.js is bundled for
+ * the browser and env.js contains Node.js fs/path imports.
+ * Server-mode config is read directly from process.env instead.
  */
-
-// ENV is lazy-loaded to keep auth.js browser-safe.
-// In browser context (window defined) we're always in local/pilot mode.
-async function getENV() {
-  if (typeof window !== 'undefined') {
-    return { isLocal: () => true, isServer: () => false, AUTH: { SECRET: 'browser-local-only' } };
-  }
-  return (await import('../config/env.js')).default;
-}
 
 // Role permission definitions
 // Mirrors ENV.ROLES — single source of truth
@@ -126,25 +120,29 @@ export function can(role, action) {
  * Server mode: validate JWT and return session
  */
 export async function createSession(roleOrToken, organizationId = null) {
-  const ENV = await getENV();
-  if (ENV.isLocal()) {
-    // Local pilot: trust the role selection
+  // Browser or local-mode server: trust the role directly
+  const isLocal = typeof window !== 'undefined' ||
+    (typeof process !== 'undefined' && process.env.TARGET !== 'server');
+
+  if (isLocal) {
     const role = roleOrToken;
     if (!PERMISSIONS[role]) throw new Error(`Unknown role: ${role}`);
     return {
       id: `local-${role}`,
       role,
-      organization_id: organizationId || 'eo-pilot-001',
+      organization_id: organizationId || 'eo-global-001',
       track: PERMISSIONS[role].track,
       permissions: PERMISSIONS[role],
       local_session: true
     };
   }
 
-  // Server mode: validate JWT
-  const jwt = await import('jsonwebtoken');
+  // Server mode only: validate JWT
+  // @vite-ignore keeps Vite from bundling jsonwebtoken into the browser build
+  const jwt = await import(/* @vite-ignore */ 'jsonwebtoken');
+  const secret = process.env.AUTH_SECRET || 'dev-secret';
   try {
-    const decoded = jwt.default.verify(roleOrToken, ENV.AUTH.SECRET);
+    const decoded = jwt.default.verify(roleOrToken, secret);
     return { ...decoded, local_session: false };
   } catch {
     throw new Error('Invalid or expired session');

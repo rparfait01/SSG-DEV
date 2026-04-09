@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router
 import { can } from '../core/auth.js';
 import storage from '../core/storage.browser.js';
 import seedData from '../data/pilot-seed.js';
+import { resolveCode } from '../config/access-codes.js';
+import AccessGate from './AccessGate.jsx';
 
 import DashboardRouter from './dashboards/DashboardRouter.jsx';
 import EventPlanner from '../modules/event-planner/EventPlanner.jsx';
@@ -13,6 +15,17 @@ import RhythmBoard from '../modules/rhythm-board/RhythmBoard.jsx';
 import OrgHealthDashboard from '../modules/org-health/OrgHealthDashboard.jsx';
 
 import '../ui/styles/tokens.css';
+
+function makeSession(resolved) {
+  return {
+    id: `local-${resolved.role}`,
+    role: resolved.role,
+    organization_id: resolved.org,
+    label: resolved.label,
+    local_session: true,
+    permissions: {}
+  };
+}
 
 function EventList({ session }) {
   const [events, setEvents] = useState([]);
@@ -54,35 +67,46 @@ function EventList({ session }) {
 function App() {
   const [session, setSession] = useState(null);
 
+  // Seed localStorage on first load
   useEffect(() => {
     storage.seedFromJson(seedData).catch(console.error);
   }, []);
 
-  const ROLE_ORG = {
-    global_board:        'eo-global-001',
-    executive_director:  'eo-global-001',
-    regional_councillor: 'eo-apac-001',
-    regional_director:   'eo-apac-001',
-    senior_director:     'eo-europe-001',
-    chapter_president:   'eo-japan-001',
-    chapter_staff:       'eo-japan-001',
-    hr:                  'eo-global-001',
-    governance:          'eo-global-001'
-  };
+  // Restore session from stored access code
+  useEffect(() => {
+    const stored = localStorage.getItem('meridian_access_code');
+    if (stored) {
+      const resolved = resolveCode(stored);
+      if (resolved) setSession(makeSession(resolved));
+    }
+  }, []);
+
+  function handleAccess(resolved) {
+    setSession(makeSession(resolved));
+  }
+
+  function handleSignOut() {
+    localStorage.removeItem('meridian_access_code');
+    setSession(null);
+  }
 
   const NAV_ITEMS = [
-    { path: '/',           label: 'Dashboard',     always: true },
-    { path: '/events',     label: 'Events',         check: (r) => can(r, 'create_event') || can(r, 'view_chapter_finance') },
-    { path: '/health',     label: 'Health',         check: (r) => can(r, 'view_health_dashboard') },
+    { path: '/',             label: 'Dashboard',   always: true },
+    { path: '/events',       label: 'Events',       check: (r) => can(r, 'create_event') || can(r, 'view_chapter_finance') },
+    { path: '/health',       label: 'Health',       check: (r) => can(r, 'view_health_dashboard') },
     { path: '/friction-log', label: 'Friction Log', check: (r) => can(r, 'view_friction_log') },
-    { path: '/orra-lite',  label: 'ORRA-Lite',      check: (r) => can(r, 'deploy_orra_lite') },
-    { path: '/plh',        label: 'PLH',            always: true },
-    { path: '/rhythm',     label: 'Rhythm',         always: true }
+    { path: '/orra-lite',    label: 'ORRA-Lite',    check: (r) => can(r, 'deploy_orra_lite') },
+    { path: '/plh',          label: 'PLH',          always: true },
+    { path: '/rhythm',       label: 'Rhythm',       always: true }
   ];
 
   const visibleNav = session
     ? NAV_ITEMS.filter(n => n.always || (n.check && n.check(session.role)))
     : [{ path: '/', label: 'Dashboard', always: true }];
+
+  if (!session) {
+    return <AccessGate onAccess={handleAccess} />;
+  }
 
   return (
     <BrowserRouter>
@@ -105,62 +129,32 @@ function App() {
             ))}
           </div>
           <div className="sidebar__footer">
-            v0.1.0 · Pilot
-            {session && <div style={{ marginTop: 4 }}>{session.role}</div>}
+            v0.1.0 · Beta
+            <div style={{ marginTop: 4, fontSize: 12 }}>{session.label}</div>
+            <button
+              style={{
+                marginTop: 8, fontSize: 11, background: 'none',
+                border: '1px solid #374151', borderRadius: 4,
+                padding: '2px 8px', cursor: 'pointer', color: '#9CA3AF'
+              }}
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </button>
           </div>
         </nav>
 
         <main className="main-content">
           <Routes>
-            <Route
-              path="/"
-              element={
-                <DashboardRouter
-                  session={session}
-                  onRoleSelect={(role) => {
-                    setSession({
-                      id: `local-${role}`,
-                      role,
-                      organization_id: ROLE_ORG[role] || 'eo-global-001',
-                      local_session: true,
-                      permissions: {}
-                    });
-                  }}
-                />
-              }
-            />
-            <Route
-              path="/events"
-              element={session ? <EventList session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/events/new"
-              element={<EventPlanner storage={storage} />}
-            />
-            <Route
-              path="/events/:id"
-              element={<EventPlanner storage={storage} />}
-            />
-            <Route
-              path="/friction-log"
-              element={session ? <FrictionLog storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/orra-lite"
-              element={session ? <OrraLite storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/plh"
-              element={session ? <PlhAssessment storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/rhythm"
-              element={session ? <RhythmBoard storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/health"
-              element={session ? <OrgHealthDashboard storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
+            <Route path="/"             element={<DashboardRouter session={session} onRoleSelect={() => {}} />} />
+            <Route path="/events"       element={<EventList session={session} />} />
+            <Route path="/events/new"   element={<EventPlanner storage={storage} />} />
+            <Route path="/events/:id"   element={<EventPlanner storage={storage} />} />
+            <Route path="/friction-log" element={<FrictionLog storage={storage} session={session} />} />
+            <Route path="/orra-lite"    element={<OrraLite storage={storage} session={session} />} />
+            <Route path="/plh"          element={<PlhAssessment storage={storage} session={session} />} />
+            <Route path="/rhythm"       element={<RhythmBoard storage={storage} session={session} />} />
+            <Route path="/health"       element={<OrgHealthDashboard storage={storage} session={session} />} />
           </Routes>
         </main>
       </div>

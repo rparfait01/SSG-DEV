@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { can } from '../core/auth.js';
 import storage from '../core/storage.js';
+import seedData from '../data/pilot-seed.js';
 
 import DashboardRouter from './dashboards/DashboardRouter.jsx';
 import EventPlanner from '../modules/event-planner/EventPlanner.jsx';
@@ -52,6 +53,10 @@ function EventList({ session }) {
 
 function App() {
   const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    storage.seedFromJson(seedData).catch(console.error);
+  }, []);
 
   const NAV_ITEMS = [
     { path: '/',           label: 'Dashboard',     always: true },

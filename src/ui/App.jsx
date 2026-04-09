@@ -58,6 +58,18 @@ function App() {
     storage.seedFromJson(seedData).catch(console.error);
   }, []);
 
+  const ROLE_ORG = {
+    global_board:        'eo-global-001',
+    executive_director:  'eo-global-001',
+    regional_councillor: 'eo-apac-001',
+    regional_director:   'eo-apac-001',
+    senior_director:     'eo-europe-001',
+    chapter_president:   'eo-japan-001',
+    chapter_staff:       'eo-japan-001',
+    hr:                  'eo-global-001',
+    governance:          'eo-global-001'
+  };
+
   const NAV_ITEMS = [
     { path: '/',           label: 'Dashboard',     always: true },
     { path: '/events',     label: 'Events',         check: (r) => can(r, 'create_event') || can(r, 'view_chapter_finance') },
@@ -109,7 +121,7 @@ function App() {
                     setSession({
                       id: `local-${role}`,
                       role,
-                      organization_id: 'eo-pilot-001',
+                      organization_id: ROLE_ORG[role] || 'eo-global-001',
                       local_session: true,
                       permissions: {}
                     });

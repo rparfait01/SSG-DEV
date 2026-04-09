@@ -14,6 +14,33 @@ import OrgHealthDashboard from '../modules/org-health/OrgHealthDashboard.jsx';
 
 import '../ui/styles/tokens.css';
 
+const VALID_ROLES = [
+  'global_board', 'executive_director', 'regional_councillor', 'regional_director',
+  'senior_director', 'chapter_president', 'chapter_staff', 'hr', 'governance'
+];
+
+const ROLE_ORG = {
+  global_board:        'eo-global-001',
+  executive_director:  'eo-global-001',
+  regional_councillor: 'eo-apac-001',
+  regional_director:   'eo-apac-001',
+  senior_director:     'eo-europe-001',
+  chapter_president:   'eo-japan-001',
+  chapter_staff:       'eo-japan-001',
+  hr:                  'eo-global-001',
+  governance:          'eo-global-001'
+};
+
+function makeSession(role, org) {
+  return {
+    id: `local-${role}`,
+    role,
+    organization_id: org,
+    local_session: true,
+    permissions: {}
+  };
+}
+
 function EventList({ session }) {
   const [events, setEvents] = useState([]);
   const navigate = useNavigate();
@@ -54,30 +81,29 @@ function EventList({ session }) {
 function App() {
   const [session, setSession] = useState(null);
 
+  // Seed localStorage on first load
   useEffect(() => {
     storage.seedFromJson(seedData).catch(console.error);
   }, []);
 
-  const ROLE_ORG = {
-    global_board:        'eo-global-001',
-    executive_director:  'eo-global-001',
-    regional_councillor: 'eo-apac-001',
-    regional_director:   'eo-apac-001',
-    senior_director:     'eo-europe-001',
-    chapter_president:   'eo-japan-001',
-    chapter_staff:       'eo-japan-001',
-    hr:                  'eo-global-001',
-    governance:          'eo-global-001'
-  };
+  // Auto-login from URL params: ?org=eo-japan-001&role=chapter_president
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const org  = params.get('org');
+    const role = params.get('role');
+    if (org && role && VALID_ROLES.includes(role)) {
+      setSession(makeSession(role, org));
+    }
+  }, []);
 
   const NAV_ITEMS = [
-    { path: '/',           label: 'Dashboard',     always: true },
-    { path: '/events',     label: 'Events',         check: (r) => can(r, 'create_event') || can(r, 'view_chapter_finance') },
-    { path: '/health',     label: 'Health',         check: (r) => can(r, 'view_health_dashboard') },
+    { path: '/',             label: 'Dashboard',   always: true },
+    { path: '/events',       label: 'Events',       check: (r) => can(r, 'create_event') || can(r, 'view_chapter_finance') },
+    { path: '/health',       label: 'Health',       check: (r) => can(r, 'view_health_dashboard') },
     { path: '/friction-log', label: 'Friction Log', check: (r) => can(r, 'view_friction_log') },
-    { path: '/orra-lite',  label: 'ORRA-Lite',      check: (r) => can(r, 'deploy_orra_lite') },
-    { path: '/plh',        label: 'PLH',            always: true },
-    { path: '/rhythm',     label: 'Rhythm',         always: true }
+    { path: '/orra-lite',    label: 'ORRA-Lite',    check: (r) => can(r, 'deploy_orra_lite') },
+    { path: '/plh',          label: 'PLH',          always: true },
+    { path: '/rhythm',       label: 'Rhythm',       always: true }
   ];
 
   const visibleNav = session
@@ -105,8 +131,22 @@ function App() {
             ))}
           </div>
           <div className="sidebar__footer">
-            v0.1.0 · Pilot
-            {session && <div style={{ marginTop: 4 }}>{session.role}</div>}
+            v0.1.0 · Beta
+            {session && (
+              <>
+                <div style={{ marginTop: 4, fontSize: 11 }}>{session.role}</div>
+                <div style={{ marginTop: 4, fontSize: 11, color: '#9CA3AF' }}>{session.organization_id}</div>
+                <button
+                  style={{ marginTop: 8, fontSize: 11, background: 'none', border: '1px solid #374151', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', color: '#9CA3AF' }}
+                  onClick={() => {
+                    setSession(null);
+                    window.history.replaceState({}, '', window.location.pathname);
+                  }}
+                >
+                  Switch Role
+                </button>
+              </>
+            )}
           </div>
         </nav>
 
@@ -117,50 +157,18 @@ function App() {
               element={
                 <DashboardRouter
                   session={session}
-                  onRoleSelect={(role) => {
-                    setSession({
-                      id: `local-${role}`,
-                      role,
-                      organization_id: ROLE_ORG[role] || 'eo-global-001',
-                      local_session: true,
-                      permissions: {}
-                    });
-                  }}
+                  onRoleSelect={(role) => setSession(makeSession(role, ROLE_ORG[role] || 'eo-global-001'))}
                 />
               }
             />
-            <Route
-              path="/events"
-              element={session ? <EventList session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/events/new"
-              element={<EventPlanner storage={storage} />}
-            />
-            <Route
-              path="/events/:id"
-              element={<EventPlanner storage={storage} />}
-            />
-            <Route
-              path="/friction-log"
-              element={session ? <FrictionLog storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/orra-lite"
-              element={session ? <OrraLite storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/plh"
-              element={session ? <PlhAssessment storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/rhythm"
-              element={session ? <RhythmBoard storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
-            <Route
-              path="/health"
-              element={session ? <OrgHealthDashboard storage={storage} session={session} /> : <p>Select a role first.</p>}
-            />
+            <Route path="/events"       element={session ? <EventList session={session} /> : <p>Select a role first.</p>} />
+            <Route path="/events/new"   element={<EventPlanner storage={storage} />} />
+            <Route path="/events/:id"   element={<EventPlanner storage={storage} />} />
+            <Route path="/friction-log" element={session ? <FrictionLog storage={storage} session={session} /> : <p>Select a role first.</p>} />
+            <Route path="/orra-lite"    element={session ? <OrraLite storage={storage} session={session} /> : <p>Select a role first.</p>} />
+            <Route path="/plh"          element={session ? <PlhAssessment storage={storage} session={session} /> : <p>Select a role first.</p>} />
+            <Route path="/rhythm"       element={session ? <RhythmBoard storage={storage} session={session} /> : <p>Select a role first.</p>} />
+            <Route path="/health"       element={session ? <OrgHealthDashboard storage={storage} session={session} /> : <p>Select a role first.</p>} />
           </Routes>
         </main>
       </div>

@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router
 import { can } from '../core/auth.js';
 import storage from '../core/storage.browser.js';
 import seedData from '../data/pilot-seed.js';
+import { resolveCode } from '../config/access-codes.js';
+import AccessGate from './AccessGate.jsx';
 
 import DashboardRouter from './dashboards/DashboardRouter.jsx';
 import EventPlanner from '../modules/event-planner/EventPlanner.jsx';
@@ -14,28 +16,12 @@ import OrgHealthDashboard from '../modules/org-health/OrgHealthDashboard.jsx';
 
 import '../ui/styles/tokens.css';
 
-const VALID_ROLES = [
-  'global_board', 'executive_director', 'regional_councillor', 'regional_director',
-  'senior_director', 'chapter_president', 'chapter_staff', 'hr', 'governance'
-];
-
-const ROLE_ORG = {
-  global_board:        'eo-global-001',
-  executive_director:  'eo-global-001',
-  regional_councillor: 'eo-apac-001',
-  regional_director:   'eo-apac-001',
-  senior_director:     'eo-europe-001',
-  chapter_president:   'eo-japan-001',
-  chapter_staff:       'eo-japan-001',
-  hr:                  'eo-global-001',
-  governance:          'eo-global-001'
-};
-
-function makeSession(role, org) {
+function makeSession(resolved) {
   return {
-    id: `local-${role}`,
-    role,
-    organization_id: org,
+    id: `local-${resolved.role}`,
+    role: resolved.role,
+    organization_id: resolved.org,
+    label: resolved.label,
     local_session: true,
     permissions: {}
   };
@@ -86,15 +72,23 @@ function App() {
     storage.seedFromJson(seedData).catch(console.error);
   }, []);
 
-  // Auto-login from URL params: ?org=eo-japan-001&role=chapter_president
+  // Restore session from stored access code
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const org  = params.get('org');
-    const role = params.get('role');
-    if (org && role && VALID_ROLES.includes(role)) {
-      setSession(makeSession(role, org));
+    const stored = localStorage.getItem('meridian_access_code');
+    if (stored) {
+      const resolved = resolveCode(stored);
+      if (resolved) setSession(makeSession(resolved));
     }
   }, []);
+
+  function handleAccess(resolved) {
+    setSession(makeSession(resolved));
+  }
+
+  function handleSignOut() {
+    localStorage.removeItem('meridian_access_code');
+    setSession(null);
+  }
 
   const NAV_ITEMS = [
     { path: '/',             label: 'Dashboard',   always: true },
@@ -109,6 +103,10 @@ function App() {
   const visibleNav = session
     ? NAV_ITEMS.filter(n => n.always || (n.check && n.check(session.role)))
     : [{ path: '/', label: 'Dashboard', always: true }];
+
+  if (!session) {
+    return <AccessGate onAccess={handleAccess} />;
+  }
 
   return (
     <BrowserRouter>
@@ -132,43 +130,31 @@ function App() {
           </div>
           <div className="sidebar__footer">
             v0.1.0 · Beta
-            {session && (
-              <>
-                <div style={{ marginTop: 4, fontSize: 11 }}>{session.role}</div>
-                <div style={{ marginTop: 4, fontSize: 11, color: '#9CA3AF' }}>{session.organization_id}</div>
-                <button
-                  style={{ marginTop: 8, fontSize: 11, background: 'none', border: '1px solid #374151', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', color: '#9CA3AF' }}
-                  onClick={() => {
-                    setSession(null);
-                    window.history.replaceState({}, '', window.location.pathname);
-                  }}
-                >
-                  Switch Role
-                </button>
-              </>
-            )}
+            <div style={{ marginTop: 4, fontSize: 12 }}>{session.label}</div>
+            <button
+              style={{
+                marginTop: 8, fontSize: 11, background: 'none',
+                border: '1px solid #374151', borderRadius: 4,
+                padding: '2px 8px', cursor: 'pointer', color: '#9CA3AF'
+              }}
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </button>
           </div>
         </nav>
 
         <main className="main-content">
           <Routes>
-            <Route
-              path="/"
-              element={
-                <DashboardRouter
-                  session={session}
-                  onRoleSelect={(role) => setSession(makeSession(role, ROLE_ORG[role] || 'eo-global-001'))}
-                />
-              }
-            />
-            <Route path="/events"       element={session ? <EventList session={session} /> : <p>Select a role first.</p>} />
+            <Route path="/"             element={<DashboardRouter session={session} onRoleSelect={() => {}} />} />
+            <Route path="/events"       element={<EventList session={session} />} />
             <Route path="/events/new"   element={<EventPlanner storage={storage} />} />
             <Route path="/events/:id"   element={<EventPlanner storage={storage} />} />
-            <Route path="/friction-log" element={session ? <FrictionLog storage={storage} session={session} /> : <p>Select a role first.</p>} />
-            <Route path="/orra-lite"    element={session ? <OrraLite storage={storage} session={session} /> : <p>Select a role first.</p>} />
-            <Route path="/plh"          element={session ? <PlhAssessment storage={storage} session={session} /> : <p>Select a role first.</p>} />
-            <Route path="/rhythm"       element={session ? <RhythmBoard storage={storage} session={session} /> : <p>Select a role first.</p>} />
-            <Route path="/health"       element={session ? <OrgHealthDashboard storage={storage} session={session} /> : <p>Select a role first.</p>} />
+            <Route path="/friction-log" element={<FrictionLog storage={storage} session={session} />} />
+            <Route path="/orra-lite"    element={<OrraLite storage={storage} session={session} />} />
+            <Route path="/plh"          element={<PlhAssessment storage={storage} session={session} />} />
+            <Route path="/rhythm"       element={<RhythmBoard storage={storage} session={session} />} />
+            <Route path="/health"       element={<OrgHealthDashboard storage={storage} session={session} />} />
           </Routes>
         </main>
       </div>

@@ -7,7 +7,14 @@
  * Permission matrix mirrors master.schema.json ROLES definition.
  */
 
-import ENV from '../config/env.js';
+// ENV is lazy-loaded to keep auth.js browser-safe.
+// In browser context (window defined) we're always in local/pilot mode.
+async function getENV() {
+  if (typeof window !== 'undefined') {
+    return { isLocal: () => true, isServer: () => false, AUTH: { SECRET: 'browser-local-only' } };
+  }
+  return (await import('../config/env.js')).default;
+}
 
 // Role permission definitions
 // Mirrors ENV.ROLES — single source of truth
@@ -119,6 +126,7 @@ export function can(role, action) {
  * Server mode: validate JWT and return session
  */
 export async function createSession(roleOrToken, organizationId = null) {
+  const ENV = await getENV();
   if (ENV.isLocal()) {
     // Local pilot: trust the role selection
     const role = roleOrToken;

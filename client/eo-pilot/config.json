@@ -1,0 +1,13 @@
+{
+  "client_id": "eo-pilot-001",
+  "client_name": "Entrepreneurs' Organization",
+  "pilot_status": true,
+  "deployment_date": "2026-04-01",
+  "organization_type": "global_member_org",
+  "dual_track": true,
+  "languages_required": ["en", "es", "pt", "ja", "zh"],
+  "regions": ["Asia Pacific", "North America", "Europe", "Latin America", "Middle East & Africa"],
+  "chapter_count_approx": 220,
+  "member_count_approx": 20000,
+  "notes": "Pilot Client 01. Reference implementation. All future client configurations measured against this."
+}

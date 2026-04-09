@@ -1,0 +1,336 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Meridian Master Schema",
+  "description": "Data contract for all Meridian tables. Local JSON and PostgreSQL both conform to these shapes.",
+  "version": "1.0",
+
+  "ROLES": [
+    "global_board",
+    "executive_director",
+    "regional_councillor",
+    "regional_director",
+    "senior_director",
+    "chapter_president",
+    "chapter_staff",
+    "hr",
+    "governance"
+  ],
+
+  "LANGUAGES": ["en", "es", "pt", "ja", "zh"],
+
+  "definitions": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "iso_datetime": { "type": "string", "format": "date-time" },
+    "iso_date": { "type": "string", "format": "date" },
+    "cents": { "type": "integer", "minimum": 0, "description": "Integer USD cents. Never store non-USD." }
+  },
+
+  "tables": {
+    "organizations": {
+      "description": "Client organizations using Meridian",
+      "fields": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["global", "regional", "chapter"] },
+        "parent_id": { "$ref": "#/definitions/uuid", "nullable": true },
+        "region": { "type": "string" },
+        "active": { "type": "boolean", "default": true },
+        "config": {
+          "type": "object",
+          "properties": {
+            "health_push_enabled": { "type": "boolean", "default": false },
+            "languages": { "type": "array", "items": { "type": "string" } },
+            "display_currency": { "type": "string", "default": "USD" }
+          }
+        },
+        "created_at": { "$ref": "#/definitions/iso_datetime" },
+        "updated_at": { "$ref": "#/definitions/iso_datetime" }
+      },
+      "required": ["id", "name", "type"]
+    },
+
+    "users": {
+      "description": "Users within an organization",
+      "fields": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "organization_id": { "$ref": "#/definitions/uuid" },
+        "role": { "type": "string", "enum": ["global_board","executive_director","regional_councillor","regional_director","senior_director","chapter_president","chapter_staff","hr","governance"] },
+        "track": { "type": "string", "enum": ["volunteer", "staff", "mixed"] },
+        "display_name": { "type": "string" },
+        "active": { "type": "boolean", "default": true },
+        "created_at": { "$ref": "#/definitions/iso_datetime" },
+        "updated_at": { "$ref": "#/definitions/iso_datetime" }
+      },
+      "required": ["id", "organization_id", "role"]
+    },
+
+    "events": {
+      "description": "Events planned and tracked via the Event Planner module",
+      "fields": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "organization_id": { "$ref": "#/definitions/uuid" },
+        "created_by": { "$ref": "#/definitions/uuid" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["global", "regional", "chapter"] },
+        "status": { "type": "string", "enum": ["draft", "approved", "complete", "cancelled"] },
+        "start_date": { "$ref": "#/definitions/iso_date" },
+        "end_date": { "$ref": "#/definitions/iso_date" },
+        "duration_days": { "type": "integer" },
+        "display_currency": { "type": "string", "default": "USD" },
+        "usd_exchange_rate": { "type": "number", "default": 1.0 },
+        "regions_supporting": { "type": "array", "items": { "type": "string" } },
+        "translation_required": { "type": "boolean" },
+        "languages_required": { "type": "array", "items": { "type": "string" } },
+        "venue": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "city": { "type": "string" },
+            "country": { "type": "string" },
+            "rental_cost_usd_cents": { "$ref": "#/definitions/cents" },
+            "deposit_usd_cents": { "$ref": "#/definitions/cents" },
+            "deposit_due_date": { "$ref": "#/definitions/iso_date" },
+            "support_costs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "$ref": "#/definitions/uuid" },
+                  "description": { "type": "string" },
+                  "cost_usd_cents": { "$ref": "#/definitions/cents" }
+                }
+              }
+            }
+          }
+        },
+        "lodging": {
+          "type": "object",
+          "properties": {
+            "property_name": { "type": "string" },
+            "room_type": { "type": "string", "enum": ["standard", "suite", "single"] },
+            "rooms_reserved": { "type": "integer" },
+            "nights": { "type": "integer" },
+            "cost_per_room_per_night_usd_cents": { "$ref": "#/definitions/cents" },
+            "total_usd_cents": { "$ref": "#/definitions/cents" },
+            "includes_translator_lodging": { "type": "boolean" }
+          }
+        },
+        "airfare": {
+          "type": "object",
+          "properties": {
+            "groups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "$ref": "#/definitions/uuid" },
+                  "group_type": { "type": "string" },
+                  "traveler_count": { "type": "integer" },
+                  "class": { "type": "string", "enum": ["economy", "business", "first"] },
+                  "cost_per_person_usd_cents": { "$ref": "#/definitions/cents" },
+                  "subtotal_usd_cents": { "$ref": "#/definitions/cents" },
+                  "notes": { "type": "string" }
+                }
+              }
+            },
+            "total_usd_cents": { "$ref": "#/definitions/cents" }
+          }
+        },
+        "per_diem": {
+          "type": "object",
+          "properties": {
+            "staff": {
+              "type": "object",
+              "properties": {
+                "daily_rate_usd_cents": { "$ref": "#/definitions/cents" },
+                "headcount": { "type": "integer" },
+                "days": { "type": "integer" },
+                "total_usd_cents": { "$ref": "#/definitions/cents" }
+              }
+            },
+            "support_personnel": {
+              "type": "object",
+              "properties": {
+                "daily_rate_usd_cents": { "$ref": "#/definitions/cents" },
+                "headcount": { "type": "integer" },
+                "days": { "type": "integer" },
+                "total_usd_cents": { "$ref": "#/definitions/cents" }
+              }
+            },
+            "total_usd_cents": { "$ref": "#/definitions/cents" }
+          }
+        },
+        "translation": {
+          "type": "object",
+          "properties": {
+            "translators": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "$ref": "#/definitions/uuid" },
+                  "name": { "type": "string" },
+                  "language_pair": { "type": "string" },
+                  "days": { "type": "integer" },
+                  "rate_per_day_usd_cents": { "$ref": "#/definitions/cents" },
+                  "subtotal_usd_cents": { "$ref": "#/definitions/cents" },
+                  "travel_required": { "type": "boolean" },
+                  "lodging_required": { "type": "boolean" },
+                  "airfare_group_id": { "type": "string" }
+                }
+              }
+            },
+            "total_usd_cents": { "$ref": "#/definitions/cents" }
+          }
+        },
+        "materials": {
+          "type": "object",
+          "properties": {
+            "selected_items": { "type": "array", "items": { "type": "string" } },
+            "cost_lines": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "$ref": "#/definitions/uuid" },
+                  "item_key": { "type": "string" },
+                  "description": { "type": "string" },
+                  "cost_usd_cents": { "$ref": "#/definitions/cents" }
+                }
+              }
+            },
+            "total_usd_cents": { "$ref": "#/definitions/cents" }
+          }
+        },
+        "support_requirements": {
+          "type": "object",
+          "properties": {
+            "selected_items": { "type": "array", "items": { "type": "string" } },
+            "cost_lines": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "$ref": "#/definitions/uuid" },
+                  "item_key": { "type": "string" },
+                  "description": { "type": "string" },
+                  "cost_usd_cents": { "$ref": "#/definitions/cents" }
+                }
+              }
+            },
+            "total_usd_cents": { "$ref": "#/definitions/cents" }
+          }
+        },
+        "budget_summary": {
+          "type": "object",
+          "properties": {
+            "venue_total_usd_cents": { "$ref": "#/definitions/cents" },
+            "lodging_total_usd_cents": { "$ref": "#/definitions/cents" },
+            "airfare_total_usd_cents": { "$ref": "#/definitions/cents" },
+            "per_diem_total_usd_cents": { "$ref": "#/definitions/cents" },
+            "translation_total_usd_cents": { "$ref": "#/definitions/cents" },
+            "materials_total_usd_cents": { "$ref": "#/definitions/cents" },
+            "support_total_usd_cents": { "$ref": "#/definitions/cents" },
+            "grand_total_usd_cents": { "$ref": "#/definitions/cents" },
+            "grand_total_display": { "type": "number" },
+            "last_calculated": { "$ref": "#/definitions/iso_datetime" }
+          }
+        },
+        "created_at": { "$ref": "#/definitions/iso_datetime" },
+        "updated_at": { "$ref": "#/definitions/iso_datetime" }
+      },
+      "required": ["id", "organization_id", "name", "type", "status"]
+    },
+
+    "org_health_signals": {
+      "description": "Aggregate health signals — no PII, no individual responses",
+      "fields": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "organization_id": { "$ref": "#/definitions/uuid" },
+        "signal_date": { "$ref": "#/definitions/iso_date" },
+        "instrument": { "type": "string", "enum": ["orra-lite", "orra", "plh", "sli"] },
+        "lhi_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "farmer_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "soil_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "seed_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "friction_density": { "type": "number" },
+        "legitimacy_index": { "type": "number" },
+        "plh_distribution": { "type": "object" },
+        "readiness_output": { "type": "string", "enum": ["Grounded", "Rebuilding", "Scattered"] },
+        "org_type": { "type": "string", "enum": ["global", "regional", "chapter"] },
+        "org_size_band": { "type": "string", "enum": ["small", "medium", "large"] },
+        "region_code": { "type": "string" },
+        "respondent_count": { "type": "integer" },
+        "pushed_to_ssg": { "type": "boolean", "default": false },
+        "pushed_at": { "$ref": "#/definitions/iso_datetime", "nullable": true },
+        "created_at": { "$ref": "#/definitions/iso_datetime" }
+      },
+      "required": ["id", "organization_id", "signal_date", "instrument"]
+    },
+
+    "friction_log": {
+      "description": "Operational friction entries — staff only, no external push",
+      "fields": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "organization_id": { "$ref": "#/definitions/uuid" },
+        "logged_by": { "$ref": "#/definitions/uuid" },
+        "log_date": { "$ref": "#/definitions/iso_date" },
+        "category": { "type": "string", "enum": ["Process", "Communication", "Authority", "Resource", "Interpersonal", "Structural"] },
+        "description": { "type": "string", "maxLength": 500 },
+        "severity": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] },
+        "resolved": { "type": "boolean", "default": false },
+        "resolved_at": { "$ref": "#/definitions/iso_datetime", "nullable": true },
+        "resolution_notes": { "type": "string" },
+        "created_at": { "$ref": "#/definitions/iso_datetime" }
+      },
+      "required": ["id", "organization_id", "category", "severity"]
+    },
+
+    "rhythm_board": {
+      "description": "Cadence and objective tracker per org + level",
+      "fields": {
+        "id": { "$ref": "#/definitions/uuid" },
+        "organization_id": { "$ref": "#/definitions/uuid" },
+        "level": { "type": "string" },
+        "objectives": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/definitions/uuid" },
+              "text": { "type": "string" },
+              "owner": { "type": "string" },
+              "source_level": { "type": "string" }
+            }
+          }
+        },
+        "milestones": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/definitions/uuid" },
+              "title": { "type": "string" },
+              "due_date": { "$ref": "#/definitions/iso_date" },
+              "owner": { "type": "string" },
+              "status": { "type": "string", "enum": ["on_track", "at_risk", "complete"] }
+            }
+          }
+        },
+        "rhythm": {
+          "type": "object",
+          "properties": {
+            "meeting_cadence": { "type": "string", "enum": ["weekly", "bi-weekly", "monthly"] },
+            "last_orra_lite_date": { "$ref": "#/definitions/iso_date" },
+            "next_orra_lite_date": { "$ref": "#/definitions/iso_date" }
+          }
+        },
+        "created_at": { "$ref": "#/definitions/iso_datetime" },
+        "updated_at": { "$ref": "#/definitions/iso_datetime" }
+      },
+      "required": ["id", "organization_id", "level"]
+    }
+  }
+}

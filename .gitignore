@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+data/local/*.json
+data/backups/
+data/migrations/output/
+*.mrd

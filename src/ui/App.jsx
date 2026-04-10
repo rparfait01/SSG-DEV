@@ -21,6 +21,7 @@ function makeSession(resolved) {
     role: resolved.role,
     organization_id: resolved.org,
     label: resolved.label,
+    dev: resolved.dev || false,
     local_session: true,
     permissions: {}
   };
@@ -95,7 +96,7 @@ function App() {
   ];
 
   const visibleNav = session
-    ? NAV_ITEMS.filter(n => n.always || (n.check && n.check(session.role)))
+    ? (session.dev ? NAV_ITEMS : NAV_ITEMS.filter(n => n.always || (n.check && n.check(session.role))))
     : [{ path: '/', label: 'Dashboard', always: true }];
 
   if (!session) {

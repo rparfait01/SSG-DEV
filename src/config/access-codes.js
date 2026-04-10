@@ -19,6 +19,9 @@
  * Org ID format: anything unique per org level, e.g. "client-global", "client-region-apac"
  */
 
+/** Prefix shown to users on the login screen. Change per client deployment. */
+export const CODE_PREFIX = 'MERID-';
+
 export const ACCESS_CODES = {
   // ── Global ──────────────────────────────────────────────
   'MERID-GB01': { org: 'eo-global-001', role: 'global_board',        label: 'Global Board' },

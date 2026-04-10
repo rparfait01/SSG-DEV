@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { resolveCode } from '../config/access-codes.js';
+import { resolveCode, CODE_PREFIX } from '../config/access-codes.js';
 
 export default function AccessGate({ onAccess }) {
-  const [code, setCode] = useState('');
+  const [suffix, setSuffix] = useState('');
   const [error, setError] = useState('');
 
   function handleSubmit(e) {
     e.preventDefault();
-    const resolved = resolveCode(code);
+    const full = CODE_PREFIX + suffix.trim().toUpperCase();
+    const resolved = resolveCode(full);
     if (resolved) {
-      localStorage.setItem('meridian_access_code', code.trim().toUpperCase());
+      localStorage.setItem('meridian_access_code', full);
       onAccess(resolved);
     } else {
       setError('Invalid access code. Contact your SSG administrator.');
@@ -32,20 +33,31 @@ export default function AccessGate({ onAccess }) {
           <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6, color: '#374151' }}>
             Access Code
           </label>
-          <input
-            type="text"
-            value={code}
-            onChange={e => { setCode(e.target.value); setError(''); }}
-            placeholder="MERID-XXXX"
-            style={{
-              width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB',
-              borderRadius: 6, fontSize: 15, boxSizing: 'border-box',
-              fontFamily: 'monospace', letterSpacing: '0.08em', textTransform: 'uppercase'
-            }}
-            autoFocus
-            autoComplete="off"
-            spellCheck={false}
-          />
+          <div style={{
+            display: 'flex', border: '1px solid #D1D5DB', borderRadius: 6, overflow: 'hidden'
+          }}>
+            <span style={{
+              padding: '10px 12px', background: '#F3F4F6', color: '#6B7280',
+              fontFamily: 'monospace', fontSize: 15, letterSpacing: '0.08em',
+              borderRight: '1px solid #D1D5DB', whiteSpace: 'nowrap', userSelect: 'none'
+            }}>
+              {CODE_PREFIX}
+            </span>
+            <input
+              type="text"
+              value={suffix}
+              onChange={e => { setSuffix(e.target.value); setError(''); }}
+              placeholder="ED-01"
+              style={{
+                flex: 1, padding: '10px 12px', border: 'none', outline: 'none',
+                fontSize: 15, fontFamily: 'monospace', letterSpacing: '0.08em',
+                textTransform: 'uppercase'
+              }}
+              autoFocus
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
           {error && (
             <div style={{ color: '#DC2626', fontSize: 12, marginTop: 6 }}>{error}</div>
           )}
@@ -53,7 +65,7 @@ export default function AccessGate({ onAccess }) {
             type="submit"
             className="btn-primary"
             style={{ width: '100%', marginTop: 16 }}
-            disabled={!code.trim()}
+            disabled={!suffix.trim()}
           >
             Enter
           </button>

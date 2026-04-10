@@ -20,6 +20,12 @@
  */
 
 export const ACCESS_CODES = {
+  // ── Global ──────────────────────────────────────────────
+  'MERID-GB01': { org: 'eo-global-001', role: 'global_board',        label: 'Global Board' },
+  'MERID-RP01': { org: 'eo-global-001', role: 'executive_director',  label: 'Executive Director' },
+  'MERID-ED01': { org: 'eo-global-001', role: 'executive_director',  label: 'Executive Director' },
+  'MERID-HR01': { org: 'eo-global-001', role: 'hr',                  label: 'HR' },
+  'MERID-GV01': { org: 'eo-global-001', role: 'governance',          label: 'Governance' },
 
   // ── Tier 1: Global / Executive ───────────────────────────
   'CLIENT-ED-01': { org: 'client-global',      role: 'executive_director',  label: 'Executive Director' },

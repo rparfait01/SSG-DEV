@@ -46,11 +46,16 @@ export default function AccessGate({ onAccess }) {
             <input
               type="text"
               value={suffix}
-              onChange={e => { setSuffix(e.target.value); setError(''); }}
-              placeholder="ED-01"
+              onChange={e => {
+                const clean = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase();
+                setSuffix(clean);
+                setError('');
+              }}
+              placeholder="XXXX"
+              maxLength={4}
               style={{
                 flex: 1, padding: '10px 12px', border: 'none', outline: 'none',
-                fontSize: 15, fontFamily: 'monospace', letterSpacing: '0.08em',
+                fontSize: 15, fontFamily: 'monospace', letterSpacing: '0.12em',
                 textTransform: 'uppercase'
               }}
               autoFocus

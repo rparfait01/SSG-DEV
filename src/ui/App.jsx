@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { can } from '../core/auth.js';
 import storage from '../core/storage.browser.js';
-import seedData from '../data/pilot-seed.js';
 import { resolveCode } from '../config/access-codes.js';
 import AccessGate from './AccessGate.jsx';
 
@@ -66,11 +65,6 @@ function EventList({ session }) {
 
 function App() {
   const [session, setSession] = useState(null);
-
-  // Seed localStorage on first load
-  useEffect(() => {
-    storage.seedFromJson(seedData).catch(console.error);
-  }, []);
 
   // Restore session from stored access code
   useEffect(() => {

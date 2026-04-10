@@ -29,6 +29,9 @@ export const ACCESS_CODES = {
   'MERID-HR01': { org: 'eo-global-001', role: 'hr',                 label: 'HR' },
   'MERID-GV01': { org: 'eo-global-001', role: 'governance',         label: 'Governance' },
 
+  // ── Regional ─────────────────────────────────────────────
+  'MERID-RD01': { org: 'eo-apac-001',   role: 'regional_director',  label: 'Regional Director' },
+
 };
 
 /**

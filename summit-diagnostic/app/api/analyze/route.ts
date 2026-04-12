@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createServiceClient } from '@/lib/supabase/service'
+import db from '@/lib/db'
 import { SYSTEM_PROMPT } from '@/lib/anthropic/prompts/system'
 import { buildORRAPrompt } from '@/lib/anthropic/prompts/instruments/orra'
 import { buildORRALitePrompt } from '@/lib/anthropic/prompts/instruments/orra-lite'
@@ -25,8 +25,6 @@ function buildUserPrompt(instrumentType: InstrumentType, input: Record<string, u
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createServiceClient()
-
   let submissionId: string | null = null
 
   try {
@@ -38,22 +36,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Create submission record
-    const { data: submission, error: insertError } = await supabase
-      .from('submissions')
-      .insert({
-        instrument_type: instrumentType,
-        client_label: clientLabel || null,
-        report_input: reportInput,
-        status: 'processing',
-      })
-      .select('id')
-      .single()
-
-    if (insertError || !submission) {
-      throw new Error('Failed to create submission record')
-    }
-
-    submissionId = submission.id
+    submissionId = crypto.randomUUID()
+    db.prepare(`
+      INSERT INTO submissions (id, instrument_type, client_label, report_input, status)
+      VALUES (?, ?, ?, ?, 'processing')
+    `).run(submissionId, instrumentType, clientLabel ?? null, JSON.stringify(reportInput))
 
     // Run diagnostic
     const message = await anthropic.messages.create({
@@ -73,14 +60,11 @@ export async function POST(request: NextRequest) {
     const diagnosticOutput = parseResponse(rawText)
 
     // Store result
-    await supabase
-      .from('submissions')
-      .update({
-        diagnostic_output: diagnosticOutput,
-        status: 'complete',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', submissionId)
+    db.prepare(`
+      UPDATE submissions
+      SET diagnostic_output = ?, status = 'complete', updated_at = datetime('now')
+      WHERE id = ?
+    `).run(JSON.stringify(diagnosticOutput), submissionId)
 
     return NextResponse.json({ id: submissionId })
 
@@ -88,10 +72,9 @@ export async function POST(request: NextRequest) {
     console.error('Analyze error:', err)
 
     if (submissionId) {
-      await supabase
-        .from('submissions')
-        .update({ status: 'error', updated_at: new Date().toISOString() })
-        .eq('id', submissionId)
+      db.prepare(`
+        UPDATE submissions SET status = 'error', updated_at = datetime('now') WHERE id = ?
+      `).run(submissionId)
     }
 
     return NextResponse.json(

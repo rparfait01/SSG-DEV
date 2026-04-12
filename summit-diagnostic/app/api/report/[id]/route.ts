@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/service'
+import db from '@/lib/db'
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = createServiceClient()
 
-  const { data, error } = await supabase
-    .from('submissions')
-    .select('*')
-    .eq('id', id)
-    .eq('status', 'complete')
-    .single()
+  const row = db.prepare(`
+    SELECT * FROM submissions WHERE id = ? AND status = 'complete'
+  `).get(id) as Record<string, unknown> | undefined
 
-  if (error || !data) {
+  if (!row) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 })
   }
 
-  return NextResponse.json(data)
+  return NextResponse.json({
+    ...row,
+    report_input: JSON.parse(row.report_input as string),
+    diagnostic_output: JSON.parse(row.diagnostic_output as string),
+  })
 }

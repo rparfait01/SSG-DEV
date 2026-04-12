@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createServiceClient } from '@/lib/supabase/service'
+import db from '@/lib/db'
 import DiagnosticReport from '@/components/diagnostic/DiagnosticReport'
 import type { Submission } from '@/types'
 
@@ -10,19 +10,20 @@ export default async function ReportPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = createServiceClient()
 
-  const { data, error } = await supabase
-    .from('submissions')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const row = db.prepare(`SELECT * FROM submissions WHERE id = ?`).get(id) as
+    | Record<string, unknown>
+    | undefined
 
-  if (error || !data) {
-    notFound()
+  if (!row) notFound()
+
+  const submission: Submission = {
+    ...(row as Omit<Submission, 'report_input' | 'diagnostic_output'>),
+    report_input: JSON.parse(row.report_input as string),
+    diagnostic_output: row.diagnostic_output
+      ? JSON.parse(row.diagnostic_output as string)
+      : null,
   }
-
-  const submission = data as Submission
 
   if (submission.status === 'error') {
     return (

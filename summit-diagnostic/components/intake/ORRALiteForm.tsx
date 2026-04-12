@@ -102,7 +102,7 @@ export default function ORRALiteForm() {
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <div className="w-10 h-10 border-4 border-ssg-navy border-t-ssg-gold rounded-full animate-spin" />
         <p className="text-ssg-navy text-base font-medium">Analyzing your assessment…</p>
-        <p className="text-gray-500 text-sm">This typically takes 15–25 seconds.</p>
+        <p className="text-gray-500 text-sm">Running locally — this takes 2–4 minutes. Please keep this tab open.</p>
       </div>
     )
   }

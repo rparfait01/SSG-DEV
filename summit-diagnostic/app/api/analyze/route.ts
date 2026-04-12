@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import db from '@/lib/db'
 import { SYSTEM_PROMPT } from '@/lib/anthropic/prompts/system'
 import { buildORRAPrompt } from '@/lib/anthropic/prompts/instruments/orra'
@@ -10,17 +10,23 @@ import { buildSMPPrompt } from '@/lib/anthropic/prompts/instruments/smp'
 import { parseResponse } from '@/lib/anthropic/parse-response'
 import type { InstrumentType } from '@/types'
 
-export const maxDuration = 60
+// Allow up to 5 minutes — local CPU inference is slow
+export const maxDuration = 300
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const ollamaClient = new OpenAI({
+  baseURL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434/v1',
+  apiKey: 'ollama', // required by the SDK but not validated by Ollama
+})
+
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:latest'
 
 function buildUserPrompt(instrumentType: InstrumentType, input: Record<string, unknown>): string {
   switch (instrumentType) {
-    case 'orra': return buildORRAPrompt(input)
+    case 'orra':      return buildORRAPrompt(input)
     case 'orra-lite': return buildORRALitePrompt(input)
-    case 'four-a': return buildFourAPrompt(input)
-    case 'plh': return buildPLHPrompt(input)
-    case 'smp': return buildSMPPrompt(input)
+    case 'four-a':    return buildFourAPrompt(input)
+    case 'plh':       return buildPLHPrompt(input)
+    case 'smp':       return buildSMPPrompt(input)
   }
 }
 
@@ -42,21 +48,17 @@ export async function POST(request: NextRequest) {
       VALUES (?, ?, ?, ?, 'processing')
     `).run(submissionId, instrumentType, clientLabel ?? null, JSON.stringify(reportInput))
 
-    // Run diagnostic
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
+    // Run diagnostic via Ollama
+    const response = await ollamaClient.chat.completions.create({
+      model: OLLAMA_MODEL,
       messages: [
-        { role: 'user', content: buildUserPrompt(instrumentType, reportInput) }
-      ]
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: buildUserPrompt(instrumentType, reportInput) },
+      ],
+      stream: false,
     })
 
-    const rawText = message.content
-      .filter(block => block.type === 'text')
-      .map(block => (block as { type: 'text'; text: string }).text)
-      .join('')
-
+    const rawText = response.choices[0]?.message?.content ?? ''
     const diagnosticOutput = parseResponse(rawText)
 
     // Store result

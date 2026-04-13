@@ -9,12 +9,17 @@ interface FormData {
   headcount: string
   scope: string
   primaryConcern: string
-  // Section 2 — Your Experience (1–5 scales)
+  // Section 2 — Your Experience (1–5 scales + optional notes)
   safety: number | null
+  safetyNote: string
   identity: number | null
+  identityNote: string
   agency: number | null
+  agencyNote: string
   connection: number | null
+  connectionNote: string
   contribution: number | null
+  contributionNote: string
   // Section 3 — Direction and Trust (1–5 scales)
   fairness: number | null
   consistency: number | null
@@ -29,10 +34,15 @@ const INITIAL: FormData = {
   scope: '',
   primaryConcern: '',
   safety: null,
+  safetyNote: '',
   identity: null,
+  identityNote: '',
   agency: null,
+  agencyNote: '',
   connection: null,
+  connectionNote: '',
   contribution: null,
+  contributionNote: '',
   fairness: null,
   consistency: null,
   credibility: null,
@@ -41,38 +51,44 @@ const INITIAL: FormData = {
 
 const SCALE_FIELDS: {
   key: keyof FormData
+  noteKey: keyof FormData
   label: string
   low: string
   high: string
 }[] = [
   {
     key: 'safety',
-    label: 'Voice and safety',
-    low: 'I hold back — it doesn\'t feel safe to say what I actually think',
+    noteKey: 'safetyNote',
+    label: 'Speaking up',
+    low: "I hold back — it doesn't feel safe to say what I actually think",
     high: 'I speak freely — my honest input is welcomed here',
   },
   {
     key: 'identity',
-    label: 'Role and meaning',
-    low: 'I\'m not sure how my work connects to anything that matters',
+    noteKey: 'identityNote',
+    label: 'Role and purpose',
+    low: "I'm not sure how my work connects to anything that matters",
     high: 'I know exactly why my role matters and I feel like I belong here',
   },
   {
     key: 'agency',
-    label: 'Ownership and control',
-    low: 'I follow instructions — I don\'t have real say in how things get done',
+    noteKey: 'agencyNote',
+    label: 'Control over work',
+    low: "I follow instructions — I don't have real say in how things get done",
     high: 'I have genuine ownership over my work and decisions',
   },
   {
     key: 'connection',
+    noteKey: 'connectionNote',
     label: 'Trust and belonging',
     low: 'I show up, do my job, and go home — real connection here is low',
     high: 'I trust the people I work with and feel like part of something',
   },
   {
     key: 'contribution',
-    label: 'Impact and visibility',
-    low: 'I\'m not sure my effort makes any difference',
+    noteKey: 'contributionNote',
+    label: 'Impact of effort',
+    low: "I'm not sure my effort makes any difference",
     high: 'I can see the impact of my work clearly',
   },
 ]
@@ -93,13 +109,13 @@ const TRUST_FIELDS: {
     key: 'consistency',
     label: 'Consistency',
     low: 'I never know what to expect',
-    high: 'Things work the way they\'re supposed to here',
+    high: "Things work the way they're supposed to here",
   },
   {
     key: 'credibility',
     label: 'Credibility',
-    low: 'I don\'t trust the direction we\'re being given',
-    high: 'I believe in where we\'re headed and who\'s leading it',
+    low: "I don't trust the direction we're being given",
+    high: "I believe in where we're headed and who's leading it",
   },
 ]
 
@@ -108,7 +124,7 @@ const selectClass =
 const inputClass =
   'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A5C] focus:border-transparent'
 const textareaClass =
-  'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A5C] focus:border-transparent resize-y min-h-[96px]'
+  'border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A5C] focus:border-transparent resize-y min-h-[80px]'
 
 function ScaleField({
   label,
@@ -116,12 +132,16 @@ function ScaleField({
   high,
   value,
   onChange,
+  noteValue,
+  onNoteChange,
 }: {
   label: string
   low: string
   high: string
   value: number | null
   onChange: (v: number) => void
+  noteValue?: string
+  onNoteChange?: (v: string) => void
 }) {
   return (
     <div className="flex flex-col gap-3 bg-white border border-gray-200 rounded-xl p-5">
@@ -140,10 +160,7 @@ function ScaleField({
       {/* Radio scale */}
       <div className="flex justify-between gap-1 mt-1">
         {[1, 2, 3, 4, 5].map(n => (
-          <label
-            key={n}
-            className={`flex flex-col items-center gap-1.5 cursor-pointer flex-1 group`}
-          >
+          <label key={n} className="flex flex-col items-center gap-1.5 cursor-pointer flex-1">
             <input
               type="radio"
               name={label}
@@ -165,6 +182,17 @@ function ScaleField({
           </label>
         ))}
       </div>
+
+      {/* Optional free-text note */}
+      {onNoteChange !== undefined && (
+        <textarea
+          className={textareaClass}
+          value={noteValue ?? ''}
+          onChange={e => onNoteChange(e.target.value)}
+          placeholder="Anything the rating doesn't capture (optional)"
+          rows={2}
+        />
+      )}
     </div>
   )
 }
@@ -190,6 +218,10 @@ export default function ORRALiteForm() {
 
   function setScale(key: keyof FormData) {
     return (v: number) => setForm(prev => ({ ...prev, [key]: v }))
+  }
+
+  function setNote(key: keyof FormData) {
+    return (v: string) => setForm(prev => ({ ...prev, [key]: v }))
   }
 
   function setField(key: keyof FormData) {
@@ -325,6 +357,8 @@ export default function ORRALiteForm() {
             high={f.high}
             value={form[f.key] as number | null}
             onChange={setScale(f.key)}
+            noteValue={form[f.noteKey] as string}
+            onNoteChange={setNote(f.noteKey)}
           />
         ))}
       </section>
@@ -354,11 +388,9 @@ export default function ORRALiteForm() {
 
       {/* How work actually gets done */}
       <section className="flex flex-col gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-[#1B3A5C] border-b border-gray-200 pb-2">
-            How work actually gets done
-          </h2>
-        </div>
+        <h2 className="text-base font-semibold text-[#1B3A5C] border-b border-gray-200 pb-2">
+          How work actually gets done
+        </h2>
 
         <ScaleField
           label="Process vs. reality"

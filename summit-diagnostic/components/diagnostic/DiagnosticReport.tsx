@@ -43,11 +43,22 @@ export default function DiagnosticReport({ submission }: { submission: Submissio
         <h1 className="text-2xl font-bold text-ssg-navy">Diagnostic Report</h1>
       </header>
 
-      {/* ORRA-Lite caveat */}
+      {/* ORRA-Lite caveat — elevated when fragile tier */}
       {submission.instrument_type === 'orra-lite' && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-          This report is based on a rapid assessment. Findings are directional. A full ORRA assessment is recommended for comprehensive diagnosis.
-        </div>
+        output.lcraReadinessTier === 'fragile' ? (
+          <div className="bg-red-50 border-2 border-red-300 rounded-lg px-5 py-4 flex flex-col gap-1">
+            <p className="text-red-800 font-semibold text-sm">Directional findings — elevated concern</p>
+            <p className="text-red-700 text-sm leading-relaxed">
+              This report is based on a rapid assessment and the findings indicate a fragile readiness state.
+              Because data points are limited, the severity of conditions may be understated.
+              A full ORRA assessment is strongly recommended before initiating corrective action.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+            This report is based on a rapid assessment. Findings are directional. A full ORRA assessment is recommended for comprehensive diagnosis.
+          </div>
+        )
       )}
 
       {/* Executive Summary */}

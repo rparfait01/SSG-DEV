@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import Groq from 'groq-sdk'
 import db from '@/lib/db'
 import { SYSTEM_PROMPT } from '@/lib/anthropic/prompts/system'
 import { buildORRAPrompt } from '@/lib/anthropic/prompts/instruments/orra'
@@ -10,15 +10,9 @@ import { buildSMPPrompt } from '@/lib/anthropic/prompts/instruments/smp'
 import { parseResponse } from '@/lib/anthropic/parse-response'
 import type { InstrumentType } from '@/types'
 
-// Allow up to 5 minutes — local CPU inference is slow
-export const maxDuration = 300
+export const maxDuration = 60
 
-const ollamaClient = new OpenAI({
-  baseURL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434/v1',
-  apiKey: 'ollama', // required by the SDK but not validated by Ollama
-})
-
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'qwen2.5:latest'
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 function buildUserPrompt(instrumentType: InstrumentType, input: Record<string, unknown>): string {
   switch (instrumentType) {
@@ -48,14 +42,14 @@ export async function POST(request: NextRequest) {
       VALUES (?, ?, ?, ?, 'processing')
     `).run(submissionId, instrumentType, clientLabel ?? null, JSON.stringify(reportInput))
 
-    // Run diagnostic via Ollama
-    const response = await ollamaClient.chat.completions.create({
-      model: OLLAMA_MODEL,
+    // Run diagnostic via Groq
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 4096,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: buildUserPrompt(instrumentType, reportInput) },
       ],
-      stream: false,
     })
 
     const rawText = response.choices[0]?.message?.content ?? ''

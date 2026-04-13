@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F8F5EF;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono);
+
+  /* SSG Brand Tokens */
+  --color-ssg-navy: #1B3A5C;
+  --color-ssg-navy-dark: #122840;
+  --color-ssg-navy-light: #2A4F78;
+  --color-ssg-gold: #C9A84C;
+  --color-ssg-gold-light: #E2C97E;
+  --color-ssg-gold-dark: #A8882E;
+  --color-ssg-cream: #F8F5EF;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
